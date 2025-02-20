@@ -16,6 +16,8 @@ class User(db.Model):
     phone = db.Column(db.String(20))
     # Admin field
     is_admin = db.Column(db.Boolean, default=False)
+    # Cart relationship
+    cart_items = db.relationship('CartItem', backref='user', lazy=True, cascade="all, delete-orphan")
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -38,3 +40,15 @@ class Product(db.Model):
     stock = db.Column(db.Integer, default=0)
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Cart relationship
+    cart_items = db.relationship('CartItem', backref='product', lazy=True, cascade="all, delete-orphan")
+
+class CartItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    quantity = db.Column(db.Integer, default=1, nullable=False)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Unique constraint to prevent duplicate cart items
+    __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='user_product_uc'),)

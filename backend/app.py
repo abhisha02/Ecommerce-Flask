@@ -5,7 +5,7 @@ import jwt
 import os
 import re
 from functools import wraps
-from models import db, User, Product, Category
+from models import db, User, Product, Category,CartItem
 from sqlalchemy import desc
 
 # Test directory permissions
@@ -41,16 +41,12 @@ db.init_app(app)
 
 def init_db():
     with app.app_context():
-        # Check if database file exists and try to remove if needed
-        if os.path.exists(db_path):
-            try:
-                os.remove(db_path)
-                print("Removed existing database")
-            except PermissionError:
-                print("Database file is locked by another process")
-        # Create the database
-        try:
-            db.create_all()
+        # Create the database tables if they don't exist
+        db.create_all()
+        
+        # Check if admin user already exists
+        existing_admin = User.query.filter_by(username="admin").first()
+        if not existing_admin:
             # Create admin user
             admin = User(
                 username="admin",
@@ -60,10 +56,18 @@ def init_db():
             )
             admin.set_password("Admin@123")
             db.session.add(admin)
+            
+            # Create some initial categories if they don't exist
+            if Category.query.count() == 0:
+                electronics = Category(name="Electronics", description="Electronic devices and gadgets")
+                clothing = Category(name="Clothing", description="Apparel and fashion items")
+                db.session.add(electronics)
+                db.session.add(clothing)
+            
             db.session.commit()
-            print("Database initialized successfully with admin user")
-        except Exception as e:
-            print(f"Error creating database: {e}")
+            print("Database initialized successfully with admin user and categories")
+        else:
+            print("Database already initialized")
 
 # Validation functions
 def is_valid_email(email):
@@ -364,6 +368,140 @@ def delete_product(current_user, id):
         db.session.delete(product)
         db.session.commit()
         return jsonify({'message': 'Product deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+@app.route('/api/cart', methods=['GET'])
+@token_required
+def get_cart(current_user):
+    try:
+        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+        result = []
+        total = 0
+        
+        for item in cart_items:
+            product = Product.query.get(item.product_id)
+            item_data = {
+                'id': item.id,
+                'product_id': product.id,
+                'product_name': product.name,
+                'price': product.price,
+                'image_url': product.image_url,
+                'quantity': item.quantity,
+                'subtotal': product.price * item.quantity,
+                'added_at': item.added_at.isoformat()
+            }
+            result.append(item_data)
+            total += item_data['subtotal']
+        
+        return jsonify({
+            'items': result,
+            'total': total,
+            'item_count': len(result)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/cart', methods=['POST'])
+@token_required
+def add_to_cart(current_user):
+    try:
+        data = request.json
+        if not data or 'product_id' not in data:
+            return jsonify({'error': 'Product ID is required'}), 400
+        
+        product_id = data['product_id']
+        quantity = data.get('quantity', 1)
+        
+        # Validate quantity
+        if quantity <= 0:
+            return jsonify({'error': 'Quantity must be positive'}), 400
+        
+        # Check if product exists and has sufficient stock
+        product = Product.query.get_or_404(product_id)
+        if product.stock < quantity:
+            return jsonify({'error': 'Insufficient stock'}), 400
+        
+        # Check if item already in cart
+        cart_item = CartItem.query.filter_by(
+            user_id=current_user.id,
+            product_id=product_id
+        ).first()
+        
+        if cart_item:
+            # Update quantity if already in cart
+            new_quantity = cart_item.quantity + quantity
+            if product.stock < new_quantity:
+                return jsonify({'error': 'Insufficient stock for requested quantity'}), 400
+            cart_item.quantity = new_quantity
+        else:
+            # Add new cart item
+            cart_item = CartItem(
+                user_id=current_user.id,
+                product_id=product_id,
+                quantity=quantity
+            )
+            db.session.add(cart_item)
+        
+        db.session.commit()
+        return jsonify({'message': 'Item added to cart successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/cart/<int:item_id>', methods=['PUT'])
+@token_required
+def update_cart_item(current_user, item_id):
+    try:
+        cart_item = CartItem.query.filter_by(id=item_id, user_id=current_user.id).first()
+        if not cart_item:
+            return jsonify({'error': 'Cart item not found'}), 404
+        
+        data = request.json
+        if 'quantity' not in data:
+            return jsonify({'error': 'Quantity is required'}), 400
+        
+        quantity = data['quantity']
+        if quantity <= 0:
+            return jsonify({'error': 'Quantity must be positive'}), 400
+        
+        # Check stock availability
+        product = Product.query.get(cart_item.product_id)
+        if product.stock < quantity:
+            return jsonify({'error': 'Insufficient stock'}), 400
+        
+        cart_item.quantity = quantity
+        db.session.commit()
+        return jsonify({'message': 'Cart item updated successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/cart/<int:item_id>', methods=['DELETE'])
+@token_required
+def remove_from_cart(current_user, item_id):
+    try:
+        cart_item = CartItem.query.filter_by(id=item_id, user_id=current_user.id).first()
+        if not cart_item:
+            return jsonify({'error': 'Cart item not found'}), 404
+        
+        db.session.delete(cart_item)
+        db.session.commit()
+        return jsonify({'message': 'Item removed from cart successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/cart/clear', methods=['DELETE'])
+@token_required
+def clear_cart(current_user):
+    try:
+        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+        for item in cart_items:
+            db.session.delete(item)
+        
+        db.session.commit()
+        return jsonify({'message': 'Cart cleared successfully'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
