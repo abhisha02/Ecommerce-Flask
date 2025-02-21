@@ -1,10 +1,11 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import RegisterPage from './pages/RegisterPage';
-import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/user/RegisterPage';
+import LoginPage from './pages/common/LoginPage';
 import AdminDashBoard from './pages/admin/AdminDashBoard';
-import Dashboard from './pages/Dashboard';
-import CartPage from './pages/CartPage';
+import Dashboard from './pages/user/Dashboard';
+import CartPage from './pages/user/CartPage';
+import NotFoundPage from './pages/common/NotFoundPage';
 
 
 
@@ -25,7 +26,7 @@ const App = () => {
         
       
        
-   
+        <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };

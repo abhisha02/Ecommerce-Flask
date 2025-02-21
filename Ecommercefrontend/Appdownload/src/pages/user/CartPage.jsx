@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { updateQuantity, removeFromCart } from "../store/slices/cartSlice";
+import { updateQuantity, removeFromCart } from "../../store/slices/cartSlice";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/layout/Header";
-import Footer from "../components/layout/Footer";
+import Header from "../../components/layout/Header";
+import Footer from "../../components/layout/Footer";
 
 const Button = ({ children, onClick, className = "", ...props }) => {
   return (

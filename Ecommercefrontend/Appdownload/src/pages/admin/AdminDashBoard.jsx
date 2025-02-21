@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../services/api';
 import { useNotification } from '../../hooks/useNotification';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
@@ -9,6 +8,7 @@ import { Notification } from '../../components/common/Notification';
 import { DashboardTab } from './DashboardTab';
 import { ProductsTab } from './ProductsTab';
 import { CategoriesTab } from './CategoriesTab';
+import adminService from '../../services/adminService';
 
 const AdminDashboard = () => {
   const [products, setProducts] = useState([]);
@@ -26,17 +26,17 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [productsRes, categoriesRes] = await Promise.all([
-        api.get('/products'),
-        api.get('/categories')
+      const [fetchedProducts, fetchedCategories] = await Promise.all([
+        adminService.fetchProducts(),
+        adminService.fetchCategories()
       ]);
       
-      setProducts(productsRes.data.items || []);
-      setCategories(categoriesRes.data || []);
+      setProducts(fetchedProducts);
+      setCategories(fetchedCategories);
  
       const stockByCategory = {};
-      productsRes.data.items.forEach(product => {
-        const category = categoriesRes.data.find(c => c.id === product.category_id);
+      fetchedProducts.forEach(product => {
+        const category = fetchedCategories.find(c => c.id === product.category_id);
         if (category) {
           stockByCategory[category.name] = (stockByCategory[category.name] || 0) + product.stock;
         }
@@ -72,10 +72,10 @@ const AdminDashboard = () => {
 
     try {
       if (currentProduct) {
-        await api.put(`/products/${currentProduct.id}`, productData);
+        await adminService.updateProduct(currentProduct.id, productData);
         showNotification('Product updated successfully');
       } else {
-        await api.post('/products', productData);
+        await adminService.createProduct(productData);
         showNotification('Product added successfully');
       }
       setIsProductDialogOpen(false);
@@ -95,10 +95,10 @@ const AdminDashboard = () => {
 
     try {
       if (currentCategory) {
-        await api.put(`/categories/${currentCategory.id}`, categoryData);
+        await adminService.updateCategory(currentCategory.id, categoryData);
         showNotification('Category updated successfully');
       } else {
-        await api.post('/categories', categoryData);
+        await adminService.createCategory(categoryData);
         showNotification('Category added successfully');
       }
       setIsCategoryDialogOpen(false);
@@ -112,7 +112,11 @@ const AdminDashboard = () => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
 
     try {
-      await api.delete(`/${type}s/${id}`);
+      if (type === 'product') {
+        await adminService.deleteProduct(id);
+      } else {
+        await adminService.deleteCategory(id);
+      }
       showNotification(`${type} deleted successfully`);
       fetchData();
     } catch (err) {

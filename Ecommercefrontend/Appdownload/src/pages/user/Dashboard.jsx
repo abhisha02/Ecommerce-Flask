@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../store/slices/cartSlice";
+import { addToCart } from "../../store/slices/cartSlice";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
-import Header from "../components/layout/Header";
-import Footer from "../components/layout/Footer";
+import Header from "../../components/layout/Header";
+import Footer from "../../components/layout/Footer";
+import userService from "../../services/userService";
 
-// Custom Button Component
+
 const Button = ({ children, onClick, className = "", ...props }) => {
   return (
     <button
@@ -19,7 +19,7 @@ const Button = ({ children, onClick, className = "", ...props }) => {
   );
 };
 
-// Custom Card Component
+
 const Card = ({ children, className = "" }) => {
   return (
     <div className={`bg-white shadow-md rounded-lg overflow-hidden flex flex-col h-full ${className}`}>
@@ -28,7 +28,7 @@ const Card = ({ children, className = "" }) => {
   );
 };
 
-// Custom CardContent Component
+
 const CardContent = ({ children, className = "" }) => {
   return <div className={`p-4 flex flex-col flex-grow ${className}`}>{children}</div>;
 };
@@ -46,8 +46,8 @@ const Dashboard = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await api.get("/products");
-        setProducts(response.data.items || []);
+        const fetchedProducts = await userService.fetchProducts();
+        setProducts(fetchedProducts);
       } catch (err) {
         setError("Failed to fetch products");
       } finally {
@@ -73,7 +73,7 @@ const Dashboard = () => {
       {/* Hero Section with Image */}
       <div className="relative w-full h-64">
         <img
-          src="your-image-url-here" // Replace with your actual image URL
+          src="image-url" 
           alt="Banner"
           className="w-full h-full object-cover"
         />

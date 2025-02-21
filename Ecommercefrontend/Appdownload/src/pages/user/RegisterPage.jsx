@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import api from '../services/api';
-import loginImage from './registercustomer.avif'; // Make sure to add this image to your project
-import Footer from '../components/layout/Footer';
-import HeaderAuth from '../components/layout/HeaderAuth';
+import AuthService from '../../services/authService';
+import loginImage from './registercustomer.avif'; 
+import Footer from '../../components/layout/Footer';
+import HeaderAuth from '../../components/layout/HeaderAuth';
 
 const RegisterForm = () => {
   const [formData, setFormData] = useState({
@@ -34,7 +33,7 @@ const RegisterForm = () => {
     setLoading(true);
 
     try {
-      const response = await api.post('/register', formData);
+      await AuthService.register(formData);
       setSuccess('Registration successful! You can now login.');
       setFormData({
         username: '',

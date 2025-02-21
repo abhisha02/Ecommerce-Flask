@@ -59,7 +59,7 @@ export const ProductsList = ({
                   )}
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-gray-800">${product.price.toFixed(2)}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-gray-800">Rs.{product.price.toFixed(2)}</td>
               <td className="px-6 py-4 whitespace-nowrap text-gray-800">{product.stock}</td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex space-x-2">

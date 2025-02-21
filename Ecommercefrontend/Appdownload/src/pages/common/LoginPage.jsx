@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { loginStart, loginSuccess, loginFailure } from '../store/slices/authSlice';
-import api from '../services/api';
+import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
+import AuthService from '../../services/authService';
 import loginImage from './customerlogin.png';
-import HeaderAuth from '../components/layout/HeaderAuth';
-import Footer from '../components/layout/Footer';
+import HeaderAuth from '../../components/layout/HeaderAuth';
+import Footer from '../../components/layout/Footer';
 
 const LoginForm = () => {
   const dispatch = useDispatch();
@@ -28,22 +28,16 @@ const LoginForm = () => {
     dispatch(loginStart());
     
     try {
-      const response = await api.post('/login', formData);
+      const data = await AuthService.login(formData);
       
-      console.log("API Response:", response.data); // Debugging line
-  
-      if (!response.data || !response.data.token || !response.data.user) {
-        throw new Error("Invalid response format");
-      }
-  
-      localStorage.setItem('token', response.data.token);
+      console.log("API Response:", data);
   
       dispatch(loginSuccess({
-        token: response.data.token,
-        user: response.data.user // Ensure the whole user object is stored
+        token: data.token,
+        user: data.user
       }));
   
-      navigate(response.data.user.is_admin ? '/admin' : '/');
+      navigate(data.user.is_admin ? '/admin' : '/');
     } catch (error) {
       console.error("Login error:", error);
       dispatch(loginFailure(error.response?.data?.message || error.message || "Login failed"));
@@ -55,7 +49,7 @@ const LoginForm = () => {
     <>
     <HeaderAuth/>
     <div className="min-h-screen flex bg-gradient-to-br from-blue-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Left side image */}
+     {/* Left side image */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-8">
         <div className="relative w-full max-w-lg h-[600px] rounded-2xl overflow-hidden shadow-2xl">
           <img 

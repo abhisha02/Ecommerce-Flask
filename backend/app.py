@@ -8,46 +8,38 @@ from functools import wraps
 from models import db, User, Product, Category,CartItem
 from sqlalchemy import desc
 
-# Test directory permissions
-try:
-    with open('test.txt', 'w') as f:
-        f.write('test')
-    os.remove('test.txt')
-    print("Directory is writable")
-except Exception as e:
-    print(f"Directory is not writable: {e}")
 
-# Get the absolute path of the current directory
+
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# Set up database path and ensure directory exists
+
 db_path = os.path.join(basedir, 'ecommerce.db')
 db_dir = os.path.dirname(db_path)
 
-# Ensure the directory exists and has proper permissions
+
 if not os.path.exists(db_dir):
     os.makedirs(db_dir, mode=0o777)
 
 app = Flask(__name__)
 CORS(app)
 
-# Configure Flask app
+
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize database
+
 db.init_app(app)
 
 def init_db():
     with app.app_context():
-        # Create the database tables if they don't exist
+       
         db.create_all()
         
-        # Check if admin user already exists
         existing_admin = User.query.filter_by(username="admin").first()
         if not existing_admin:
-            # Create admin user
+            
             admin = User(
                 username="admin",
                 email="admin@example.com",
@@ -57,7 +49,7 @@ def init_db():
             admin.set_password("Admin@123")
             db.session.add(admin)
             
-            # Create some initial categories if they don't exist
+          
             if Category.query.count() == 0:
                 electronics = Category(name="Electronics", description="Electronic devices and gadgets")
                 clothing = Category(name="Clothing", description="Apparel and fashion items")
@@ -69,7 +61,7 @@ def init_db():
         else:
             print("Database already initialized")
 
-# Validation functions
+
 def is_valid_email(email):
     email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(email_pattern, email))
@@ -86,7 +78,7 @@ def is_valid_password(password):
     
     return True, "Password is valid"
 
-# JWT token decorator
+
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -94,7 +86,7 @@ def token_required(f):
         if not token:
             return jsonify({'message': 'Token is missing'}), 401
         try:
-            token = token.split()[1]  # Remove 'Bearer ' prefix
+            token = token.split()[1]  
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = User.query.filter_by(username=data['user']).first()
             if not current_user:
@@ -104,7 +96,6 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated
 
-# Admin authorization decorator
 def admin_required(f):
     @wraps(f)
     def decorated(current_user, *args, **kwargs):
@@ -122,16 +113,16 @@ def register():
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Missing required fields'}), 400
         
-        # Validate email format
+
         if not is_valid_email(data['email']):
             return jsonify({'error': 'Invalid email format'}), 400
         
-        # Validate password
+      
         is_password_valid, password_message = is_valid_password(data['password'])
         if not is_password_valid:
             return jsonify({'error': password_message}), 400
         
-        # Check if user already exists
+     
         if User.query.filter_by(username=data['username']).first():
             return jsonify({'error': 'Username already exists'}), 400
         if User.query.filter_by(email=data['email']).first():
@@ -143,7 +134,7 @@ def register():
             full_name=data.get('full_name', ''),
             address=data.get('address', ''),
             phone=data.get('phone', ''),
-            is_admin=False  # Regular users are not admins by default
+            is_admin=False  
         )
         user.set_password(data['password'])
         
@@ -270,7 +261,7 @@ def update_category(current_user, id):
 def delete_category(current_user, id):
     try:
         category = Category.query.get_or_404(id)
-        # Check if category has products
+       
         if category.products:
             return jsonify({'error': 'Cannot delete category with products'}), 400
         
@@ -407,36 +398,35 @@ def get_cart(current_user):
 def add_to_cart(current_user):
     try:
         data = request.json
-        
+
         if not data or 'product_id' not in data:
             return jsonify({'error': 'Product ID is required'}), 400
         
         product_id = data['product_id']
         quantity = data.get('quantity', 1)
         
-        # Validate quantity
+      
         if quantity <= 0:
             return jsonify({'error': 'Quantity must be positive'}), 400
         
-        # Check if product exists and has sufficient stock
+      
         product = Product.query.get_or_404(product_id)
         if product.stock < quantity:
             return jsonify({'error': 'Insufficient stock'}), 400
-        
-        # Check if item already in cart
+      
         cart_item = CartItem.query.filter_by(
             user_id=current_user.id,
             product_id=product_id
         ).first()
         
         if cart_item:
-            # Update quantity if already in cart
+        
             new_quantity = cart_item.quantity + quantity
             if product.stock < new_quantity:
                 return jsonify({'error': 'Insufficient stock for requested quantity'}), 400
             cart_item.quantity = new_quantity
         else:
-            # Add new cart item
+        
             cart_item = CartItem(
                 user_id=current_user.id,
                 product_id=product_id,
@@ -466,7 +456,7 @@ def update_cart_item(current_user, item_id):
         if quantity <= 0:
             return jsonify({'error': 'Quantity must be positive'}), 400
         
-        # Check stock availability
+      
         product = Product.query.get(cart_item.product_id)
         if product.stock < quantity:
             return jsonify({'error': 'Insufficient stock'}), 400
@@ -518,5 +508,5 @@ def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    init_db()  # Initialize database when running directly
+    init_db()  
     app.run(debug=True)
