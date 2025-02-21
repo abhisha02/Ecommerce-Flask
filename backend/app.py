@@ -407,6 +407,7 @@ def get_cart(current_user):
 def add_to_cart(current_user):
     try:
         data = request.json
+        
         if not data or 'product_id' not in data:
             return jsonify({'error': 'Product ID is required'}), 400
         
